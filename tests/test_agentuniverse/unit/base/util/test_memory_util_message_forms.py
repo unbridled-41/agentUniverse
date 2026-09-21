@@ -46,6 +46,25 @@ class TestGetMemoryStringMessageForms(unittest.TestCase):
         messages = generate_messages(['plain', {'type': 'human', 'content': 'hi'}])
         self.assertEqual([Message, Message], [type(m) for m in messages])
 
+    def test_stored_input_typed_message_renders_on_next_turn(self):
+        """Two-turn persistence path: Agent.process_memory converts a dict
+        chat_history entry into a plain Message and stores it; the next
+        turn's load_memory reads it back and must render it."""
+        from agentuniverse.agent.memory.memory_storage.ram_memory_storage import \
+            RamMemoryStorage
+
+        storage = RamMemoryStorage()
+        # turn 1: dict chat_history -> generate_messages -> memory.add
+        storage.add(generate_messages([{'type': 'input', 'content': 'q1'}]),
+                    session_id='s', agent_id='a')
+        # turn 2: memory.get -> get_memory_string (agent_util.load_memory)
+        stored = storage.get(session_id='s', agent_id='a')
+        self.assertEqual([(Message, 'input')],
+                         [(type(m), m.type) for m in stored])
+        self.assertFalse(hasattr(stored[0], 'trace_id'))
+        result = get_memory_string(stored, 'a')
+        self.assertIn('q1', result)
+
 
 if __name__ == '__main__':
     unittest.main()
