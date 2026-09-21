@@ -21,12 +21,21 @@ from agentuniverse.llm.default.zhipu_openai_style_llm import DefaultZhiPuLLM
 
 # (class, model_name, max_context_length configured in the yaml)
 # The OpenAI entries mirror the shipped examples/sample_standard_app LLM yamls.
+# Every configured value differs from the class's model table entry, so each
+# case fails while the table entry is answered instead of the configuration.
 CASES = [
     (DefaultOpenAILLM, 'o3-mini', 2000000),
     (DefaultOpenAILLM, 'o1', 200000),
     (DefaultOpenAILLM, 'o1-mini', 128000),
     (DefaultOpenAILLM, 'gpt-4o-mini', 128000),
     (DefaultDeepSeekLLM, 'deepseek-reasoner', 65792),
+    (DefaultZhiPuLLM, 'GLM-4-Air', 32768),
+]
+
+# model name -> the entry of the class's own table, used to pin the fallback.
+TABLE_ENTRIES = [
+    (DefaultOpenAILLM, 'gpt-4o', 128000),
+    (DefaultDeepSeekLLM, 'deepseek-chat', 64000),
     (DefaultZhiPuLLM, 'GLM-4-Air', 128000),
 ]
 
@@ -53,13 +62,13 @@ class ConfiguredMaxContextLengthTest(unittest.TestCase):
                 self.assertEqual(llm.max_context_length(), configured)
 
     def test_table_is_used_when_nothing_is_configured(self):
-        for llm_class, model_name, _ in CASES:
+        """The fallback must stay intact for LLMs configured without the key."""
+        for llm_class, model_name, table_entry in TABLE_ENTRIES:
             with self.subTest(llm=llm_class.__name__, model_name=model_name):
                 llm = _llm_from_yaml_values(
                     llm_class, name=model_name, model_name=model_name, max_tokens=2000)
                 self.assertIsNone(llm._max_context_length)
-                self.assertIsInstance(llm.max_context_length(), int)
-                self.assertGreater(llm.max_context_length(), 0)
+                self.assertEqual(llm.max_context_length(), table_entry)
 
     def test_prompt_budget_follows_the_configured_value(self):
         """The budget process_llm_token derives must not collapse to the table entry."""
