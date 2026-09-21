@@ -56,6 +56,17 @@ class TestAgentModelLlmParams(unittest.TestCase):
         model = AgentModel(profile={'introduction': 'hi'})
         self.assertEqual({}, model.llm_params())
 
+    def test_planner_handle_llm_without_llm_model_returns_none(self):
+        from agentuniverse.agent.plan.planner.planning_planner.planning_planner import \
+            PlanningPlanner
+
+        agent_model = AgentModel(profile={'introduction': 'hi'})
+        with mock.patch('agentuniverse.agent.plan.planner.planner.LLMManager'
+                        ) as llm_manager:
+            llm_manager.return_value.get_instance_obj.return_value = None
+            llm = PlanningPlanner().handle_llm(agent_model)
+        self.assertIsNone(llm)
+
     def test_llm_params_with_llm_model_keeps_supported_bind_values(self):
         model = AgentModel(profile={
             'llm_model': {'name': 'default_llm', 'model_name': 'gpt-test',
