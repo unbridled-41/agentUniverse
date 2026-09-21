@@ -102,6 +102,21 @@ class TestSSRFProxy(unittest.TestCase):
         # An HTTP proxy receives the absolute URL of the target.
         self.assertEqual(_ProxyHandler.recorded_paths, ["http://example.com/through-proxy"])
 
+    def test_all_url_proxy_is_used_for_a_real_request(self):
+        """The SSRF_PROXY_ALL_URL branch must keep routing after the rewrite.
+
+        That branch already used httpx's `proxy=` argument and keeps calling
+        httpx.request directly, so it is pinned with a live request rather than
+        a mocked one.
+        """
+        with _local_proxy() as proxy_url:
+            with patch.object(ssrf_proxy, "SSRF_PROXY_ALL_URL", proxy_url):
+                with patch.object(ssrf_proxy, "proxies", None):
+                    response = ssrf_proxy.get("http://example.com/all-url-proxy")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(_ProxyHandler.recorded_paths, ["http://example.com/all-url-proxy"])
+
     def test_split_scheme_proxies_keep_the_request_arguments(self):
         with _local_proxy() as proxy_url:
             with patch.object(ssrf_proxy, "SSRF_PROXY_ALL_URL", ""):
